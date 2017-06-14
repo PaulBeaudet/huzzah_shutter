@@ -4,10 +4,11 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
+ESP8266WiFiMulti WiFiMulti;
 #include <ESP8266HTTPClient.h>
 #define USE_SERIAL Serial
-
-ESP8266WiFiMulti WiFiMulti;
+#define CAMERA_IP "192.168.54.1"
+#define RELEASE_API_CALL "192.168.54.1/cam.cgi?mode=camcmd&value=capture"
 
 void setup() {
     USE_SERIAL.begin(115200);
@@ -21,22 +22,26 @@ void setup() {
 
 void loop() {
     if((WiFiMulti.run() == WL_CONNECTED)) {          // wait for WiFi connection
-        HTTPClient http;                             // curious why this is nested here
-        USE_SERIAL.print("[HTTP] begin...\n");       // configure traged server and url
-        //http.begin("https://192.168.1.12/test.html", "7a 9c f4 db 40 d3 62 5a 6e 21 bc 5c cc 66 c8 3e a1 45 59 38"); //HTTPS
-        http.begin("http://192.168.1.12/test.html"); // HTTP
-        USE_SERIAL.print("[HTTP] GET...\n");         // start connection and send HTTP header
-        int httpCode = http.GET();                   // httpCode will be negative on error
-        if(httpCode > 0) {                           // HTTP header has been send and Server response header has been handled
-            USE_SERIAL.printf("[HTTP] GET... code: %d\n", httpCode);
-            if(httpCode == HTTP_CODE_OK) {           // file found at server
-                String payload = http.getString();
-                USE_SERIAL.println(payload);
-            }
-        } else {
-            USE_SERIAL.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
-        }
-        http.end();
+        delay(30000);
+        remoteShutter();
     }
     delay(10000);
+}
+
+void remoteShutter(){
+    HTTPClient http;                             // curious why this is nested here
+    USE_SERIAL.print("[HTTP] begin...\n");       // configure traged server and url
+    http.begin(RELEASE_API_CALL);                // HTTP request to camera to release shutter
+    USE_SERIAL.print("[HTTP] GET...\n");         // start connection and send HTTP header
+    int httpCode = http.GET();                   // httpCode will be negative on error
+    if(httpCode > 0) {                           // HTTP header has been send and Server response header has been handled
+        USE_SERIAL.printf("[HTTP] GET... code: %d\n", httpCode);
+        if(httpCode == HTTP_CODE_OK) {           // file found at server
+            String payload = http.getString();
+            USE_SERIAL.println(payload);
+        }
+    } else {
+        USE_SERIAL.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
+    }
+    http.end();
 }

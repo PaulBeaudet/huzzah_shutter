@@ -39,9 +39,7 @@ void loop() {
 
 void remoteShutter(){
     HTTPClient http;                             // curious why this is nested here
-    USE_SERIAL.print("[HTTP] begin...\n");       // configure traged server and url
     http.begin(RELEASE_API_CALL);                // HTTP request to camera to release shutter
-    USE_SERIAL.print("[HTTP] GET...\n");         // start connection and send HTTP header
     int httpCode = http.GET();                   // httpCode will be negative on error
     if(httpCode > 0) {                           // HTTP header has been send and Server response header has been handled
         USE_SERIAL.printf("[HTTP] GET... code: %d\n", httpCode);

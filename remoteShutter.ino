@@ -8,10 +8,18 @@ ESP8266WiFiMulti WiFiMulti;
 #include <ESP8266HTTPClient.h>
 #define USE_SERIAL Serial
 #define CAMERA_IP "192.168.54.1"
-#define RELEASE_API_CALL "192.168.54.1/cam.cgi?mode=camcmd&value=capture"
+#define RELEASE_API_CALL "http://192.168.54.1/cam.cgi?mode=camcmd&value=capture"
+
+#define BUTTON_A 0
+#define BUTTON_B 16
+#define BUTTON_C 2
+#define LED      0
 
 void setup() {
     USE_SERIAL.begin(115200);
+    pinMode(BUTTON_A, INPUT_PULLUP);
+    pinMode(BUTTON_B, INPUT_PULLUP);
+    pinMode(BUTTON_C, INPUT_PULLUP);
     for(uint8_t t = 4; t > 0; t--) {
         USE_SERIAL.printf("[SETUP] WAIT %d...\n", t);
         USE_SERIAL.flush();
@@ -22,10 +30,11 @@ void setup() {
 
 void loop() {
     if((WiFiMulti.run() == WL_CONNECTED)) {          // wait for WiFi connection
-        delay(30000);
-        remoteShutter();
+        if(!digitalRead(BUTTON_A)){
+            remoteShutter();
+        }
+        delay(100);
     }
-    delay(10000);
 }
 
 void remoteShutter(){

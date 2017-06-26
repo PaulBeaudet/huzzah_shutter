@@ -13,13 +13,13 @@ ESP8266WiFiMulti WiFiMulti;
 #define BUTTON_A 0
 #define BUTTON_B 16
 #define BUTTON_C 2
+#define SHUTTER_BUTTON 14
 #define LED      0
 
 void setup() {
     USE_SERIAL.begin(115200);
-    pinMode(BUTTON_A, INPUT_PULLUP);
-    pinMode(BUTTON_B, INPUT_PULLUP);
-    pinMode(BUTTON_C, INPUT_PULLUP);
+    // oledButtonsSetup();
+    pinMode(SHUTTER_BUTTON, INPUT);
     for(uint8_t t = 4; t > 0; t--) {
         USE_SERIAL.printf("[SETUP] WAIT %d...\n", t);
         USE_SERIAL.flush();
@@ -30,7 +30,7 @@ void setup() {
 
 void loop() {
     if((WiFiMulti.run() == WL_CONNECTED)) {          // wait for WiFi connection
-        if(!digitalRead(BUTTON_A)){
+        if(digitalRead(SHUTTER_BUTTON)){
             remoteShutter();
         }
         delay(100);
@@ -51,4 +51,10 @@ void remoteShutter(){
         USE_SERIAL.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
     }
     http.end();
+}
+
+void oledButtonsSetup(){
+    pinMode(BUTTON_A, INPUT_PULLUP);
+    pinMode(BUTTON_B, INPUT_PULLUP);
+    pinMode(BUTTON_C, INPUT_PULLUP);
 }

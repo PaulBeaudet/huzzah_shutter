@@ -23,14 +23,8 @@ ESP8266WiFiMulti WiFiMulti;
 #define LED      0
 
 void setup() {
-    Serial.begin(115200);
     oled.init();
     buttonsSetup();
-    for(uint8_t t = 4; t > 0; t--) {
-        Serial.printf("[SETUP] WAIT %d...\n", t);
-        Serial.flush();
-        delay(1000);
-    }
     WiFiMulti.addAP(WIFI_SSID, WIFI_PASSWORD);    // derived from config.h
     oled.println("remote shutter");
 }
@@ -46,27 +40,6 @@ void loop() {
     oled.display();
 }
 
-void buttonDebugging(byte action){
-    static byte lastAction = 0;
-
-    if(action == lastAction){
-        // Serial.print(".");
-    } else {
-        if(action == 1){
-            oled.print("pressed");
-        } else if (action == 2){
-            oled.print("...");
-        } else if (action == 0){
-            oled.clearMsgArea();
-        } else if (action == 3){
-            oled.print("holding");
-        } else if (action == 4){
-            oled.print("...");
-        }
-        Serial.println(action, DEC);
-    }
-    lastAction = action;
-}
 
 void remoteShutter(){                            // this is probably blocking code
     static int shootsTaken = 0;
@@ -75,7 +48,6 @@ void remoteShutter(){                            // this is probably blocking co
     http.begin(RELEASE_API_CALL);                // HTTP request to camera to release shutter
     int httpCode = http.GET();                   // httpCode will be negative on error // BLOCKING? probably
     if(httpCode > 0) {                           // HTTP header has been send and Server response header has been handled
-        Serial.printf("[HTTP] GET... code: %d\n", httpCode);
         if(httpCode == HTTP_CODE_OK) {           // file found at server
             String payload = http.getString();
             Serial.println(payload);
@@ -84,10 +56,13 @@ void remoteShutter(){                            // this is probably blocking co
             oled.println(shootsTaken);
         }
     } else {
-        Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
+        oled.clearMsgArea();
+        oled.println("failed request");
     }
     http.end();
 }
+
+// BUTTON STUFFFS
 
 void buttonsSetup(){
     pinMode(BUTTON_A, INPUT_PULLUP);
@@ -140,4 +115,24 @@ byte buttonState(){                           // remove default value to use in 
         beingHeld = false;
     }
     return pressedState;
+}
+
+void buttonDebugging(byte action){
+    static byte lastAction = 0;
+
+    if(action == lastAction){
+    } else {
+        if(action == 1){
+            oled.print("pressed");
+        } else if (action == 2){
+            oled.print("...");
+        } else if (action == 0){
+            oled.clearMsgArea();
+        } else if (action == 3){
+            oled.print("holding");
+        } else if (action == 4){
+            oled.print("...");
+        }
+    }
+    lastAction = action;
 }

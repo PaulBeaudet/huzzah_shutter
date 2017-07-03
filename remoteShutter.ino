@@ -15,6 +15,7 @@ ESP8266WiFiMulti WiFiMulti;
 #include <ESP8266HTTPClient.h>
 #define CAMERA_IP "192.168.54.1"
 #define RELEASE_API_CALL "http://192.168.54.1/cam.cgi?mode=camcmd&value=capture"
+#define RECORD_API_CALL "http://192.168.54.1/cam.cgi?mode=camcmd&value=recmode"
 
 #define BUTTON_A 0
 #define BUTTON_B 16
@@ -23,6 +24,7 @@ ESP8266WiFiMulti WiFiMulti;
 #define LED      0
 
 void setup() {
+    Serial.begin(115200);
     oled.init();
     buttonsSetup();
     WiFiMulti.addAP(WIFI_SSID, WIFI_PASSWORD);    // derived from config.h
@@ -31,10 +33,14 @@ void setup() {
 
 void loop() {
     byte action = buttonState();
+    byte bAction = bState();
     // buttonDebugging(action);
     if((WiFiMulti.run() == WL_CONNECTED)) {          // wait for WiFi connection
         if(action == 1){
             remoteShutter();
+        }
+        if(bAction == 1){
+            remoteVideo();
         }
     }
     oled.display();
@@ -49,11 +55,31 @@ void remoteShutter(){                            // this is probably blocking co
     int httpCode = http.GET();                   // httpCode will be negative on error // BLOCKING? probably
     if(httpCode > 0) {                           // HTTP header has been send and Server response header has been handled
         if(httpCode == HTTP_CODE_OK) {           // file found at server
-            String payload = http.getString();
-            Serial.println(payload);
             shootsTaken++;
             oled.clearMsgArea();
             oled.println(shootsTaken);
+        }
+    } else {
+        oled.clearMsgArea();
+        oled.println("failed request");
+    }
+    http.end();
+}
+
+void remoteVideo(){                            // this is probably blocking code
+    static int videoTaken = 0;
+
+    HTTPClient http;                             // curious why this is nested here
+    http.begin(RECORD_API_CALL);                 // HTTP request to camera to release shutter
+    int httpCode = http.GET();                   // httpCode will be negative on error // BLOCKING? probably
+    Serial.println(httpCode);
+    if(httpCode > 0) {                           // HTTP header has been send and Server response header has been handled
+        if(httpCode == HTTP_CODE_OK) {           // file found at server
+            String payload = http.getString();
+            Serial.println(payload);
+            videoTaken++;
+            oled.clearMsgArea();
+            oled.println("Taking video");
         }
     } else {
         oled.clearMsgArea();
@@ -68,7 +94,7 @@ void buttonsSetup(){
     pinMode(BUTTON_A, INPUT_PULLUP);
     pinMode(BUTTON_B, INPUT_PULLUP);
     pinMode(BUTTON_C, INPUT_PULLUP);
-    pinMode(SHUTTER_BUTTON, INPUT_PULLUP);
+    // pinMode(SHUTTER_BUTTON, INPUT_PULLUP);
 }
 
 // argument is assumed to be a press event
@@ -88,6 +114,43 @@ byte buttonState(){                           // remove default value to use in 
 
     byte pressedState = 0;                    // low is a press with the pullup
     if(digitalRead(BUTTON_A) == LOW){         // if the button has been pressed
+        if(bounceCheck) {                     // given timer has started
+            if(millis() - time > BOUNCETIME){ // check if bounce time has elapesed
+                if(beingPressed){
+                    pressedState = 2;
+                    if ( millis() - time > HOLDSTATE){ // case button held longer return state 2
+                        if(beingHeld){
+                            pressedState = 4;
+                        } else {
+                            pressedState = 3;           // signal hold state
+                            beingHeld = true;
+                        }
+                    }
+                } else {
+                    pressedState = 1;                   // signal debounced press state
+                    beingPressed = true;
+                }
+            }
+        } else {
+            bounceCheck = true; // note that the timing state is set
+            time = millis();    // placemark when time press event started
+        }
+    } else {                // set all possible state back to zero
+        bounceCheck = false;// in case the timing state was set, unset
+        beingPressed = false;
+        beingHeld = false;
+    }
+    return pressedState;
+}
+
+byte bState(){                           // remove default value to use in main sketch
+    static unsigned long time = millis();
+    static boolean bounceCheck = false;
+    static boolean beingPressed = false;
+    static boolean beingHeld = false;
+
+    byte pressedState = 0;                    // low is a press with the pullup
+    if(digitalRead(BUTTON_B) == LOW){         // if the button has been pressed
         if(bounceCheck) {                     // given timer has started
             if(millis() - time > BOUNCETIME){ // check if bounce time has elapesed
                 if(beingPressed){
